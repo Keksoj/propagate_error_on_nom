@@ -49,3 +49,8 @@ pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>> {
 
 The goal is to make a proper use of `cut` and of a custom error,
 so that any `serde_json` error is converted to a failure and propagated into `IResult`.
+
+## Try it yourself
+
+Feel free to `cargo run` to see what is wrong, and `cargo test` would be interesting too.
+Then dive into the code. Help me, Obi-Wan, you're my only hope.
