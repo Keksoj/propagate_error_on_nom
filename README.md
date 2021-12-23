@@ -1,4 +1,6 @@
-# Use map_res
+# Propagate error on nom.
+
+Working on [Sōzu issue #744](https://github.com/sozu-proxy/sozu/issues/744).
 
 What on earth did Geal mean when he wrote:
 
@@ -45,4 +47,4 @@ pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>> {
 }
 ```
 
-The goal is to make a proper use of `cut` and of a custom error.
+The goal is to make a proper use of `cut` and of a custom error, so that any `serde_json` error is converted to a failure and propagated into `IResult`.
