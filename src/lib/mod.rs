@@ -73,42 +73,33 @@ impl nom::error::ParseError<&str> for CustomError {
             serde_json_error: None,
         }
     }
-    fn append(input: &str, kind: ErrorKind, other: Self) -> Self {
+
+    fn append(_input: &str, _kind: ErrorKind, other: Self) -> Self {
         other
     }
 }
 
-pub fn parse_user_from_str(input: &str) -> IResult<&str, User> {
-    let serde_result = serde_json::from_str::<User>(input);
-    match serde_result {
-        Ok(user) => Ok(("", user)),
-        Err(serde_json_error) => Err(nom::Err::Error(NomError {
-            input: input,
-            code: ErrorKind::Fail,
-        })),
-    }
+pub fn parse_one_user(input: &str) -> IResult<&str, User, CustomError> {
+    let (i, json_data) = is_not("\n")(input)?;
+
+    let user = match serde_json::from_str::<User>(json_data) {
+        Ok(user) => user,
+        Err(serde_error) => {
+            return Err(nom::Err::Failure(CustomError::from_external_error(
+                input,
+                ErrorKind::MapRes,
+                serde_error,
+            )))
+        }
+    };
+
+    let (next_input, _) = nom::character::complete::char('\n')(i)?;
+
+    Ok((next_input, user))
 }
 
 pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>, CustomError> {
-    // this is as close as it gets to the syntax of Sōzu's CommandRequest parser
-    // is this how I should use cut?
-    many0(complete(
-        // this could be put in a separated parser and put in a loop
-        terminated(
-            // cut transforms serde_json::Error into a Failure, that will trickle up
-            // all the way to many0
-            cut(
-                //
-                map_res(
-                    // this sends an error when arriving at the end of file
-                    is_not("\n"),
-                    //
-                    serde_json::from_str::<User>,
-                ),
-            ),
-            nom::character::complete::char('\n'),
-        ),
-    ))(input)
+    many0(parse_one_user)(input)
 }
 
 #[cfg(test)]
@@ -132,8 +123,8 @@ mod test {
 
         println!("{}", stringified_users);
         assert_eq!(
-            parse_several_users(&stringified_users).unwrap().1,
-            random_users
+            parse_several_users(&stringified_users).unwrap(),
+            ("", random_users)
         )
     }
 
