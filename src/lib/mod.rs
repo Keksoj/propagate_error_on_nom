@@ -15,12 +15,22 @@ use nom::{
 };
 use serde_json::from_str;
 
+/**
+ * Documentation:
+
+pub trait nom::Error::FromExternalError<I, E> {
+    fn from_external_error(input: I, kind: ErrorKind, e: E) -> Self;
+}
+
+*/
+
 /*
 // What should this look like?
 enum CustomError<I, E> {
     SerdeError(String),
     NomError(I, ErrorKind),
 }
+
 
 impl FromExternalError<str, serde_json::Error> for CustomError<&str, serde_json::Error> {
     fn from_external_error(
@@ -34,6 +44,24 @@ impl FromExternalError<str, serde_json::Error> for CustomError<&str, serde_json:
 }
 */
 
+struct CustomError {
+    kind: ErrorKind,
+    serde_json_error: serde_json::Error,
+}
+
+impl FromExternalError<&str, serde_json::Error> for CustomError {
+    fn from_external_error(
+        _input: &str,
+        kind: ErrorKind,
+        serde_json_error: serde_json::Error,
+    ) -> Self {
+        Self {
+            kind,
+            serde_json_error,
+        }
+    }
+}
+
 pub fn parse_user_from_str(input: &str) -> IResult<&str, User> {
     let serde_result = serde_json::from_str::<User>(input);
     match serde_result {
@@ -45,13 +73,18 @@ pub fn parse_user_from_str(input: &str) -> IResult<&str, User> {
     }
 }
 
-pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>> {
+pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>, CustomError> {
     // this is as close as it gets to the syntax of Sōzu's CommandRequest parser
-    many0(complete(terminated(
+    // is this how I should use cut?
+    cut(many0(complete(terminated(
         // where should I write cut in here?
-        map_res(is_not("\n"), serde_json::from_str::<User>),
+        map_res(
+            is_not("\n"),
+            //
+            serde_json::from_str::<User>,
+        ),
         nom::character::complete::char('\n'),
-    )))(input)
+    ))))(input)
 }
 
 #[cfg(test)]
