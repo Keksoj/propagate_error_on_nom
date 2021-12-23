@@ -44,21 +44,37 @@ impl FromExternalError<str, serde_json::Error> for CustomError<&str, serde_json:
 }
 */
 
-struct CustomError {
+#[derive(Debug)]
+pub struct CustomError {
     kind: ErrorKind,
-    serde_json_error: serde_json::Error,
+    serde_json_error: Option<serde_json::Error>,
 }
 
 impl FromExternalError<&str, serde_json::Error> for CustomError {
     fn from_external_error(
-        _input: &str,
+        input: &str,
         kind: ErrorKind,
         serde_json_error: serde_json::Error,
     ) -> Self {
+        println!("input: {}, error kind: {:?}", input, kind);
         Self {
             kind,
-            serde_json_error,
+            serde_json_error: Some(serde_json_error),
         }
+    }
+}
+
+impl nom::error::ParseError<&str> for CustomError {
+    fn from_error_kind(input: &str, kind: ErrorKind) -> Self {
+        println!("input: {}, error kind: {:?}", input, kind);
+
+        Self {
+            kind,
+            serde_json_error: None,
+        }
+    }
+    fn append(input: &str, kind: ErrorKind, other: Self) -> Self {
+        other
     }
 }
 
@@ -76,15 +92,23 @@ pub fn parse_user_from_str(input: &str) -> IResult<&str, User> {
 pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>, CustomError> {
     // this is as close as it gets to the syntax of Sōzu's CommandRequest parser
     // is this how I should use cut?
-    cut(many0(complete(terminated(
-        // where should I write cut in here?
-        map_res(
-            is_not("\n"),
-            //
-            serde_json::from_str::<User>,
+    many0(complete(
+        // this could be put in a separated parser and put in a loop
+        terminated(
+            // cut transforms serde_json::Error into a Failure, that will trickle up
+            // all the way to many0
+            cut(
+                //
+                map_res(
+                    // this sends an error when arriving at the end of file
+                    is_not("\n"),
+                    //
+                    serde_json::from_str::<User>,
+                ),
+            ),
+            nom::character::complete::char('\n'),
         ),
-        nom::character::complete::char('\n'),
-    ))))(input)
+    ))(input)
 }
 
 #[cfg(test)]
@@ -93,11 +117,11 @@ mod test {
 
     #[test]
     fn parse_one_user_works() {
-        let str = "{\"username\":\"Spongebob\",\"password\":\"HeyPatrick\"}\nbla";
+        let str = "{\"username\":\"Spongebob\",\"password\":\"HeyPatrick\"}\n";
 
         assert_eq!(
-            parse_several_users(str),
-            Ok(("bla", vec![User::new("Spongebob", "HeyPatrick")]))
+            parse_several_users(str).unwrap(),
+            ("", vec![User::new("Spongebob", "HeyPatrick")])
         )
     }
 
@@ -106,9 +130,10 @@ mod test {
         let random_users = User::create_random_users(3);
         let stringified_users = User::serialize_users(&random_users).unwrap();
 
+        println!("{}", stringified_users);
         assert_eq!(
-            parse_several_users(&stringified_users),
-            Ok(("", random_users)),
+            parse_several_users(&stringified_users).unwrap().1,
+            random_users
         )
     }
 
@@ -119,11 +144,10 @@ mod test {
 {"username":"2vhA0B0","password":"SDGJDGk"}
 "#;
 
-        assert_eq!(
-            parse_several_users(bad_users_input),
+        assert!(
+            parse_several_users(bad_users_input).is_err(),
             // Err(nom::error::Error(serde_json::Error { err: "bla" }))
             // nom::Err::Error(nom::error::Error { input: bad_users_input, code: ErrorKind::Fail })
-            Ok(("", vec![]))
         );
     }
 }
