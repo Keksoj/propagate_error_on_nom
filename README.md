@@ -47,4 +47,5 @@ pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>> {
 }
 ```
 
-The goal is to make a proper use of `cut` and of a custom error, so that any `serde_json` error is converted to a failure and propagated into `IResult`.
+The goal is to make a proper use of `cut` and of a custom error,
+so that any `serde_json` error is converted to a failure and propagated into `IResult`.

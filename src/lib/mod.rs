@@ -20,7 +20,6 @@ pub fn parse_user_from_str(input: &str) -> IResult<&str, User> {
 
 pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>> {
     // this is as close as it gets to the syntax of Sōzu's CommandRequest parser
-    
     many0(complete(terminated(
         map_res(is_not("\n"), serde_json::from_str::<User>),
         nom::character::complete::char('\n'),
@@ -30,10 +29,6 @@ pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>> {
 #[cfg(test)]
 mod test {
     use super::*;
-    // use nom::{
-    //     error::{ErrorKind, VerboseError, VerboseErrorKind},
-    //     Err as NomErr,
-    // };
 
     #[test]
     fn parse_one_user_works() {
