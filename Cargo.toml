@@ -1,5 +1,5 @@
 [package]
-name = "use_map_res"
+name = "propagate_error_on_nom"
 version = "0.1.0"
 edition = "2021"
 
