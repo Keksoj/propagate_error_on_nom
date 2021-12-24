@@ -54,3 +54,47 @@ so that any `serde_json` error is converted to a failure and propagated into `IR
 
 Feel free to `cargo run` to see what is wrong, and `cargo test` would be interesting too.
 Then dive into the code. Help me, Obi-Wan, you're my only hope.
+
+## The solution: split the code
+
+It turns out the verbose way is more readable.
+
+```rust
+pub struct CustomError {
+    kind: ErrorKind,
+    serde_json_error: Option<serde_json::Error>,
+}
+
+impl FromExternalError<&str, serde_json::Error> for CustomError {
+    // boilerplate
+}
+
+impl nom::error::ParseError<&str> for CustomError {
+    // boilerplate
+}
+
+pub fn parse_one_user(input: &str) -> IResult<&str, User, CustomError> {
+    let (i, json_data) = is_not("\n")(input)?;
+
+    let user = match serde_json::from_str::<User>(json_data) {
+        Ok(user) => user,
+        Err(serde_error) => {
+            return Err(nom::Err::Failure(CustomError::from_external_error(
+                input,
+                ErrorKind::MapRes,
+                serde_error,
+            )))
+        }
+    };
+
+    let (next_input, _) = nom::character::complete::char('\n')(i)?;
+
+    Ok((next_input, user))
+}
+
+pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>, CustomError> {
+    many0(parse_one_user)(input)
+}
+```
+
+Thank you @geal, eternal gratitude.
