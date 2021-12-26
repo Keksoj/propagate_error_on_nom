@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     println!(
         "Trying to parse this:{}\nwith our nom-combinated parser that wraps serde_json, should propagate the same error:\n{:?}",
         bad_string,
-        lib::parse_several_users(&bad_string)
+        lib::parse_several_structs::<User>(&bad_string)
     );
 
     Ok(())

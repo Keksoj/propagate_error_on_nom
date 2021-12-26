@@ -39,7 +39,7 @@ pub fn parse(input: &[u8]) -> IResult<&[u8], Vec<CommandRequest>> {
 I want to reproduce this using a custom struct `User` that can be serialized and deserialized:
 
 ```rust
-pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>> {
+pub fn parse_several_structs(input: &str) -> IResult<&str, Vec<User>> {
     many0(complete(terminated(
         map_res(is_not("\n"), serde_json::from_str::<User>),
         nom::character::complete::char('\n'),
@@ -73,7 +73,7 @@ impl nom::error::ParseError<&str> for CustomError {
     // boilerplate
 }
 
-pub fn parse_one_user(input: &str) -> IResult<&str, User, CustomError> {
+pub fn parse_one_struct(input: &str) -> IResult<&str, User, CustomError> {
     let (i, json_data) = is_not("\n")(input)?;
 
     let user = match serde_json::from_str::<User>(json_data) {
@@ -92,8 +92,8 @@ pub fn parse_one_user(input: &str) -> IResult<&str, User, CustomError> {
     Ok((next_input, user))
 }
 
-pub fn parse_several_users(input: &str) -> IResult<&str, Vec<User>, CustomError> {
-    many0(parse_one_user)(input)
+pub fn parse_several_structs(input: &str) -> IResult<&str, Vec<User>, CustomError> {
+    many0(parse_one_struct)(input)
 }
 ```
 
